@@ -21,7 +21,7 @@ class FileSelection
      *
      * @return \Spatie\Backup\Tasks\Backup\FileSelection
      */
-    public static function create($includeFilesAndDirectories = []): FileSelection
+    public static function create($includeFilesAndDirectories = []): self
     {
         return new static($includeFilesAndDirectories);
     }
@@ -43,21 +43,14 @@ class FileSelection
      *
      * @return \Spatie\Backup\Tasks\Backup\FileSelection
      */
-    public function excludeFilesFrom($excludeFilesAndDirectories): FileSelection
+    public function excludeFilesFrom($excludeFilesAndDirectories): self
     {
         $this->excludeFilesAndDirectories = $this->excludeFilesAndDirectories->merge($this->sanitize($excludeFilesAndDirectories));
 
         return $this;
     }
 
-    /**
-     * Enable or disable the following of symlinks.
-     *
-     * @param bool $shouldFollowLinks
-     *
-     * @return \Spatie\Backup\Tasks\Backup\FileSelection
-     */
-    public function shouldFollowLinks(bool $shouldFollowLinks): FileSelection
+    public function shouldFollowLinks(bool $shouldFollowLinks): self
     {
         $this->shouldFollowLinks = $shouldFollowLinks;
 

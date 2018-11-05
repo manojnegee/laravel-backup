@@ -32,7 +32,7 @@ class BackupDestinationStatus
         $this->reachable = $this->backupDestination->isReachable();
     }
 
-    public function setMaximumAgeOfNewestBackupInDays(int $days): BackupDestinationStatus
+    public function setMaximumAgeOfNewestBackupInDays(int $days): self
     {
         $this->maximumAgeOfNewestBackupInDays = $days;
 
@@ -44,7 +44,7 @@ class BackupDestinationStatus
         return $this->maximumAgeOfNewestBackupInDays;
     }
 
-    public function setMaximumStorageUsageInMegabytes(float $megabytes): BackupDestinationStatus
+    public function setMaximumStorageUsageInMegabytes(float $megabytes): self
     {
         $this->maximumStorageUsageInMegabytes = $megabytes;
 
@@ -66,15 +66,12 @@ class BackupDestinationStatus
         return $this->backupDestination->backups()->count();
     }
 
-    /**
-     * @return \Carbon\Carbon|null
-     */
-    public function dateOfNewestBackup()
+    public function dateOfNewestBackup(): ?Carbon
     {
         $newestBackup = $this->backupDestination->newestBackup();
 
         if (is_null($newestBackup)) {
-            return;
+            return null;
         }
 
         return $newestBackup->date();

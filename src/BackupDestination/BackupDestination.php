@@ -57,7 +57,7 @@ class BackupDestination
         return strtolower($filesystemType);
     }
 
-    public static function create(string $diskName, string $backupName): BackupDestination
+    public static function create(string $diskName, string $backupName): self
     {
         try {
             $disk = app(Factory::class)->disk($diskName);
@@ -135,18 +135,12 @@ class BackupDestination
         return $this->backups()->size();
     }
 
-    /**
-     * @return \Spatie\Backup\BackupDestination\Backup|null
-     */
-    public function newestBackup()
+    public function newestBackup(): ?Backup
     {
         return $this->backups()->newest();
     }
 
-    /**
-     * @return \Spatie\Backup\BackupDestination\Backup|null
-     */
-    public function oldestBackup()
+    public function oldestBackup(): ?Backup
     {
         return $this->backups()->oldest();
     }
@@ -160,5 +154,12 @@ class BackupDestination
         }
 
         return $newestBackup->date()->gt($date);
+    }
+
+    public function fresh(): self
+    {
+        $this->backupCollectionCache = null;
+
+        return $this;
     }
 }

@@ -11,6 +11,7 @@ use Spatie\Backup\Events\BackupHasFailed;
 use Spatie\Backup\Events\BackupWasSuccessful;
 use Spatie\Backup\Events\BackupZipWasCreated;
 use Spatie\Backup\Exceptions\InvalidBackupJob;
+use Spatie\DbDumper\Compressors\GzipCompressor;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
 use Spatie\Backup\Events\BackupManifestWasCreated;
 use Spatie\Backup\BackupDestination\BackupDestination;
@@ -44,56 +45,66 @@ class BackupJob
         $this->backupDestinations = new Collection();
     }
 
-    public function dontBackupFilesystem(): BackupJob
+    public function dontBackupFilesystem(): self
     {
         $this->fileSelection = FileSelection::create();
 
         return $this;
     }
 
-    public function dontBackupDatabases(): BackupJob
+    public function onlyDbName(array $allowedDbNames): self
+    {
+        $this->dbDumpers = $this->dbDumpers->filter(
+            function (DbDumper $dbDumper, string $connectionName) use ($allowedDbNames) {
+                return in_array($connectionName, $allowedDbNames);
+            });
+
+        return $this;
+    }
+
+    public function dontBackupDatabases(): self
     {
         $this->dbDumpers = new Collection();
 
         return $this;
     }
 
-    public function disableNotifications(): BackupJob
+    public function disableNotifications(): self
     {
         $this->sendNotifications = false;
 
         return $this;
     }
 
-    public function setDefaultFilename(): BackupJob
+    public function setDefaultFilename(): self
     {
         $this->filename = Carbon::now()->format('Y-m-d-H-i-s').'.zip';
 
         return $this;
     }
 
-    public function setFileSelection(FileSelection $fileSelection): BackupJob
+    public function setFileSelection(FileSelection $fileSelection): self
     {
         $this->fileSelection = $fileSelection;
 
         return $this;
     }
 
-    public function setDbDumpers(Collection $dbDumpers): BackupJob
+    public function setDbDumpers(Collection $dbDumpers): self
     {
         $this->dbDumpers = $dbDumpers;
 
         return $this;
     }
 
-    public function setFilename(string $filename): BackupJob
+    public function setFilename(string $filename): self
     {
         $this->filename = $filename;
 
         return $this;
     }
 
-    public function onlyBackupTo(string $diskName): BackupJob
+    public function onlyBackupTo(string $diskName): self
     {
         $this->backupDestinations = $this->backupDestinations->filter(function (BackupDestination $backupDestination) use ($diskName) {
             return $backupDestination->diskName() === $diskName;
@@ -106,7 +117,7 @@ class BackupJob
         return $this;
     }
 
-    public function setBackupDestinations(Collection $backupDestinations): BackupJob
+    public function setBackupDestinations(Collection $backupDestinations): self
     {
         $this->backupDestinations = $backupDestinations;
 
@@ -115,10 +126,13 @@ class BackupJob
 
     public function run()
     {
-        $this->temporaryDirectory = (new TemporaryDirectory(storage_path('app/laravel-backup')))
+        $temporaryDirectoryPath = config('backup.backup.temporary_directory') ?? storage_path('app/backup-temp');
+
+        $this->temporaryDirectory = (new TemporaryDirectory($temporaryDirectoryPath))
             ->name('temp')
             ->force()
-            ->create();
+            ->create()
+            ->empty();
 
         try {
             if (! count($this->backupDestinations)) {
@@ -138,6 +152,10 @@ class BackupJob
             consoleOutput()->error("Backup failed because {$exception->getMessage()}.".PHP_EOL.$exception->getTraceAsString());
 
             $this->sendNotification(new BackupHasFailed($exception));
+
+            $this->temporaryDirectory->delete();
+
+            throw $exception;
         }
 
         $this->temporaryDirectory->delete();
@@ -185,7 +203,7 @@ class BackupJob
     {
         consoleOutput()->info("Zipping {$manifest->count()} files...");
 
-        $pathToZip = $this->temporaryDirectory->path(config('laravel-backup.backup.destination.filename_prefix').$this->filename);
+        $pathToZip = $this->temporaryDirectory->path(config('backup.backup.destination.filename_prefix').$this->filename);
 
         $zip = Zip::createForManifest($manifest, $pathToZip);
 
@@ -213,17 +231,19 @@ class BackupJob
 
             $fileName = "{$dbType}-{$dbName}.sql";
 
+            if (config('backup.backup.gzip_database_dump')) {
+                $dbDumper->useCompressor(new GzipCompressor());
+                $fileName .= '.'.$dbDumper->getCompressorExtension();
+            }
+
+            if ($compressor = config('backup.backup.database_dump_compressor')) {
+                $dbDumper->useCompressor(new $compressor());
+                $fileName .= '.'.$dbDumper->getCompressorExtension();
+            }
+
             $temporaryFilePath = $this->temporaryDirectory->path('db-dumps'.DIRECTORY_SEPARATOR.$fileName);
 
             $dbDumper->dumpToFile($temporaryFilePath);
-
-            if (config('laravel-backup.backup.gzip_database_dump')) {
-                consoleOutput()->info("Gzipping {$dbDumper->getDbName()}...");
-
-                $compressedDumpPath = Gzip::compress($temporaryFilePath);
-
-                return $compressedDumpPath;
-            }
 
             return $temporaryFilePath;
         })->toArray();

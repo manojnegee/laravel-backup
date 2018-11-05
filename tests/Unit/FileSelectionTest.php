@@ -2,10 +2,11 @@
 
 namespace Spatie\Backup\Test\Unit;
 
+use PHPUnit\Framework\TestCase;
 use Spatie\Backup\Test\TestHelper;
 use Spatie\Backup\Tasks\Backup\FileSelection;
 
-class FileSelectionTest extends \PHPUnit_Framework_TestCase
+class FileSelectionTest extends TestCase
 {
     /** @string */
     protected $sourceDirectory;
@@ -15,6 +16,11 @@ class FileSelectionTest extends \PHPUnit_Framework_TestCase
         parent::setUp();
 
         $this->sourceDirectory = (new TestHelper())->getStubDirectory();
+    }
+
+    protected function assertSameArrayContent($expected, $actual, $message = '')
+    {
+        $this->assertCount(count($expected), array_intersect($expected, $actual), $message);
     }
 
     /** @test */
@@ -86,13 +92,14 @@ class FileSelectionTest extends \PHPUnit_Framework_TestCase
             $this->sourceDirectory.'/directory2/directory1',
         ]));
 
-        $this->assertSame(
+        $this->assertSameArrayContent(
             $this->getTestFiles([
-                'directory1/directory1/file1.txt',
                 'directory1/directory1/file2.txt',
+                'directory1/directory1/file1.txt',
                 'directory2/directory1/file1.txt',
             ]),
-            iterator_to_array($fileSelection->selectedFiles()));
+            iterator_to_array($fileSelection->selectedFiles())
+        );
     }
 
     /** @test */

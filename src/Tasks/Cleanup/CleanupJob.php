@@ -14,13 +14,13 @@ class CleanupJob
     /** @var \Illuminate\Support\Collection */
     protected $backupDestinations;
 
-    /** @var \Spatie\Backup\Tasks\Cleanup\Strategies\CleanupStrategy */
+    /** @var \Spatie\Backup\Tasks\Cleanup\CleanupStrategy */
     protected $strategy;
 
     /** @var bool */
     protected $sendNotifications = true;
 
-    public function __construct(Collection $backupDestinations, CleanupStrategy $strategy, bool $disableNotifications)
+    public function __construct(Collection $backupDestinations, CleanupStrategy $strategy, bool $disableNotifications = false)
     {
         $this->backupDestinations = $backupDestinations;
 
@@ -42,12 +42,14 @@ class CleanupJob
                 $this->strategy->deleteOldBackups($backupDestination->backups());
                 $this->sendNotification(new CleanupWasSuccessful($backupDestination));
 
-                $usedStorage = Format::humanReadableSize($backupDestination->usedStorage());
+                $usedStorage = Format::humanReadableSize($backupDestination->fresh()->usedStorage());
                 consoleOutput()->info("Used storage after cleanup: {$usedStorage}.");
             } catch (Exception $exception) {
                 consoleOutput()->error("Cleanup failed because: {$exception->getMessage()}.");
 
                 $this->sendNotification(new CleanupHasFailed($exception));
+
+                throw $exception;
             }
         });
     }

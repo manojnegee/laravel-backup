@@ -55,13 +55,14 @@ class DbDumperFactoryTest extends TestCase
             'driver' => 'mysql',
             'read' => [
                 'host' => 'localhost-read',
+                'database' => 'myDb-read',
             ],
             'write' => [
                 'host' => 'localhost-write',
+                'database' => 'myDb-write',
             ],
             'username' => 'root',
             'password' => 'myPassword',
-            'database' => 'myDb',
             'dump' => ['add_extra_option' => '--extra-option=value'],
         ];
 
@@ -70,6 +71,33 @@ class DbDumperFactoryTest extends TestCase
         $dumper = DbDumperFactory::createFromConnection('mysql');
 
         $this->assertEquals('localhost-read', $dumper->getHost());
+        $this->assertEquals('myDb-read', $dumper->getDbName());
+    }
+
+    /** @test */
+    public function it_will_use_the_first_read_db_when_multiple_are_defined()
+    {
+        $dbConfig = [
+            'driver' => 'mysql',
+            'read' => [
+                'host' => ['localhost-read-1', 'localhost-read-2'],
+                'database' => 'myDb-read',
+            ],
+            'write' => [
+                'host' => 'localhost-write',
+                'database' => 'myDb-write',
+            ],
+            'username' => 'root',
+            'password' => 'myPassword',
+            'dump' => ['add_extra_option' => '--extra-option=value'],
+        ];
+
+        $this->app['config']->set('database.connections.mysql', $dbConfig);
+
+        $dumper = DbDumperFactory::createFromConnection('mysql');
+
+        $this->assertEquals('localhost-read-1', $dumper->getHost());
+        $this->assertEquals('myDb-read', $dumper->getDbName());
     }
 
     /** @test */

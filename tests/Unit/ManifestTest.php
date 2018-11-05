@@ -3,10 +3,11 @@
 namespace Spatie\Backup\Test\Unit;
 
 use Generator;
+use PHPUnit\Framework\TestCase;
 use Spatie\Backup\Test\TestHelper;
 use Spatie\Backup\Tasks\Backup\Manifest;
 
-class ManifestTest extends \PHPUnit_Framework_TestCase
+class ManifestTest extends TestCase
 {
     /** @var \Spatie\Backup\Test\TestHelper */
     protected $testHelper;
@@ -59,7 +60,7 @@ class ManifestTest extends \PHPUnit_Framework_TestCase
     /** @test */
     public function it_implements_the_countable_interface()
     {
-        $this->assertSame(0, count($this->manifest));
+        $this->assertCount(0, $this->manifest);
     }
 
     /** @test */
@@ -79,7 +80,7 @@ class ManifestTest extends \PHPUnit_Framework_TestCase
 
         $this->manifest->addFiles($testFiles);
 
-        $this->assertSame(count($testFiles), count($this->manifest));
+        $this->assertCount(count($testFiles), $this->manifest);
     }
 
     /** @test */

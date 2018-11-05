@@ -5,17 +5,13 @@ namespace Spatie\Backup\Notifications;
 use Spatie\Backup\Helpers\Format;
 use Illuminate\Support\Collection;
 use Illuminate\Notifications\Notification;
+use Spatie\Backup\BackupDestination\BackupDestination;
 
 abstract class BaseNotification extends Notification
 {
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array
-     */
-    public function via()
+    public function via(): array
     {
-        $notificationChannels = config('laravel-backup.notifications.notifications.'.static::class);
+        $notificationChannels = config('backup.notifications.notifications.'.static::class);
 
         return array_filter($notificationChannels);
     }
@@ -43,6 +39,8 @@ abstract class BaseNotification extends Notification
             return collect();
         }
 
+        $backupDestination->fresh();
+
         $newestBackup = $backupDestination->newestBackup();
         $oldestBackup = $backupDestination->oldestBackup();
 
@@ -58,10 +56,7 @@ abstract class BaseNotification extends Notification
         ])->filter();
     }
 
-    /**
-     * @return \Spatie\Backup\BackupDestination\BackupDestination|null
-     */
-    public function backupDestination()
+    public function backupDestination(): ?BackupDestination
     {
         if (isset($this->event->backupDestination)) {
             return $this->event->backupDestination;
@@ -70,5 +65,7 @@ abstract class BaseNotification extends Notification
         if (isset($this->event->backupDestinationStatus)) {
             return $this->event->backupDestinationStatus->backupDestination();
         }
+
+        return null;
     }
 }

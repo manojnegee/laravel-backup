@@ -2,8 +2,7 @@
 
 namespace Spatie\Backup\Test\Integration;
 
-use Event;
-use Exception;
+use ZipArchive;
 use Spatie\Backup\Test\TestHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\Console\Kernel;
@@ -43,16 +42,18 @@ abstract class TestCase extends Orchestra
     {
         $this->testHelper->initializeTempDirectory();
 
-        $app['config']->set('database.default', 'sqlite');
-
         $app['config']->set('mail.driver', 'log');
 
-        $app['config']->set('database.default', 'sqlite');
-        $app['config']->set('database.connections.sqlite', [
+        $app['config']->set('database.connections.db1', [
             'driver' => 'sqlite',
-            'database' => $this->testHelper->getTempDirectory().'/database.sqlite',
-            'prefix' => '',
+            'database' => $this->testHelper->createSQLiteDatabase('database1.sqlite'),
         ]);
+        $app['config']->set('database.connections.db2', [
+            'driver' => 'sqlite',
+            'database' => $this->testHelper->createSQLiteDatabase('database2.sqlite'),
+        ]);
+
+        $app['config']->set('database.default', 'db1');
 
         $app['config']->set('filesystems.disks.local', [
             'driver' => 'local',
@@ -119,28 +120,6 @@ abstract class TestCase extends Orchestra
         }
     }
 
-    protected function expectsEvent($eventClassName)
-    {
-        Event::listen($eventClassName, function ($event) use ($eventClassName) {
-            $this->firedEvents[] = $eventClassName;
-        });
-
-        $this->beforeApplicationDestroyed(function () use ($eventClassName) {
-            $firedEvents = isset($this->firedEvents) ? $this->firedEvents : [];
-
-            if (! in_array($eventClassName, $firedEvents)) {
-                throw new Exception("Event {$eventClassName} not fired");
-            }
-        });
-    }
-
-    protected function doesNotExpectEvent($eventClassName)
-    {
-        Event::listen($eventClassName, function ($event) use ($eventClassName) {
-            throw new Exception("Event {$eventClassName} unexpectingly fired");
-        });
-    }
-
     protected function seeInConsoleOutput($expectedText)
     {
         $consoleOutput = $this->app[Kernel::class]->output();
@@ -180,11 +159,12 @@ abstract class TestCase extends Orchestra
         $this->assertFalse($this->fileExistsInZip($zipPath, $filename), "Failed to assert that {$zipPath} doesn't contain a file name {$filename}");
     }
 
-    protected function fileExistsInZip($zipPath, $filename)
+    protected function fileExistsInZip($zipPath, $filename): bool
     {
-        $zip = new \ZipArchive();
+        $zip = new ZipArchive();
+
         if ($zip->open($zipPath) === true) {
-            return $zip->locateName($filename, \ZipArchive::FL_NODIR) !== false;
+            return $zip->locateName($filename, ZipArchive::FL_NODIR) !== false;
         }
 
         return false;

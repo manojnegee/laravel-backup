@@ -16,6 +16,7 @@ class Backup
     public function __construct(Filesystem $disk, string $path)
     {
         $this->disk = $disk;
+
         $this->path = $path;
     }
 
@@ -46,12 +47,15 @@ class Backup
         return $this->disk->size($this->path);
     }
 
-    /**
-     * Delete the backup from the disk.
-     */
+    public function stream()
+    {
+        return $this->disk->readStream($this->path);
+    }
+
     public function delete()
     {
         $this->disk->delete($this->path);
+
         consoleOutput()->info("Deleted backup `{$this->path}`.");
     }
 }
